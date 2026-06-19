@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum TransactionKind {
+  INVESTMENT
+  MAINTENANCE
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model Member {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  color        String   @default("#6366f1")
+  createdAt    DateTime @default(now())
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   Member?   @relation("MemberDeletedBy", fields: [deletedById], references: [id])
+
+  deletedMembers         Member[]        @relation("MemberDeletedBy")
+  transactions           Transaction[]
+  bills                  Bill[]
+  deletedCategories      Category[]      @relation("CategoryDeletedBy")
+  deletedTransactions    Transaction[]   @relation("TransactionDeletedBy")
+  deletedBills           Bill[]          @relation("BillDeletedBy")
+  deletedPaymentMethods  PaymentMethod[] @relation("PaymentMethodDeletedBy")
+}
+
+model Category {
+  id    String           @id @default(cuid())
+  name  String
+  type  TransactionType
+  color String           @default("#6366f1")
+  icon  String?
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   Member?   @relation("CategoryDeletedBy", fields: [deletedById], references: [id])
+
+  transactions Transaction[]
+  bills        Bill[]
+
+  @@unique([name, type])
+}
+
+model Transaction {
+  id          String           @id @default(cuid())
+  type        TransactionType
+  kind        TransactionKind?
+  amount      Float
+  date        DateTime
+  description String?
+  createdAt   DateTime         @default(now())
+
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  billId String? @unique
+  bill   Bill?   @relation(fields: [billId], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   Member?   @relation("TransactionDeletedBy", fields: [deletedById], references: [id])
+}
+
+model Bill {
+  id            String     @id @default(cuid())
+  description   String
+  amount        Float
+  dueDate       DateTime
+  status        BillStatus @default(PENDING)
+  isRecurring   Boolean    @default(false)
+  recurrenceDay Int?
+  createdAt     DateTime   @default(now())
+
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  transaction Transaction?
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   Member?   @relation("BillDeletedBy", fields: [deletedById], references: [id])
+}
+
+model PaymentMethod {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  color String  @default("#6366f1")
+  icon  String?
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   Member?   @relation("PaymentMethodDeletedBy", fields: [deletedById], references: [id])
+
+  transactions Transaction[]
+}
